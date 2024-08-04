@@ -22,6 +22,11 @@ function Live() {
   const [reaction, setReaction] = useState<Reaction[]>([]);
   const broadcast = useBroadcastEvent();
   useInterval(() => {
+    setReaction((reaction) =>
+      reaction.filter((r) => r.timestamp > Date.now() - 4000)
+    );
+  }, 1000);
+  useInterval(() => {
     if (
       cursorState.mode === CursorMode.Reaction &&
       cursorState.isPressed &&
