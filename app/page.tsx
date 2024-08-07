@@ -9,11 +9,16 @@ import {
   handleCanvaseMouseMove,
   handleCanvasMouseDown,
   handleCanvasMouseUp,
+  handleCanvasObjectModified,
+  handleCanvasObjectMoving,
   handleResize,
   initializeFabric,
+  renderCanvas,
 } from "@/lib/canvas";
 import { ActiveElement } from "@/types/type";
 import { useMutation, useStorage } from "@/liveblocks.config";
+import { defaultNavElement } from "@/constants";
+import { handleDelete } from "@/lib/key-events";
 
 export default function Page() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,10 +42,37 @@ export default function Page() {
     icon: "",
   });
 
+  const deleteAllShapes = useMutation(({ storage }) => {
+    const canvasObjects = storage.get("canvasObjects");
+    if (!canvasObjects || canvasObjects.size === 0) return true;
+    for (const [key, value] of canvasObjects.entries()) {
+      canvasObjects.delete(key);
+    }
+    return canvasObjects.size === 0;
+  }, []);
+
   const handleActiveElement = (elem: ActiveElement) => {
     setActiveElement(elem);
+
+    switch (elem?.value) {
+      case "reset":
+        deleteAllShapes();
+        fabricRef.current?.clear();
+        setActiveElement(defaultNavElement);
+        break;
+      case "delete":
+        handleDelete(fabricRef.current as any, deleteShapeFromStorage);
+        setActiveElement(defaultNavElement);
+      default:
+        break;
+    }
     selectedShapeRef.current = elem?.value as string;
   };
+
+  const deleteShapeFromStorage = useMutation(({ storage }, objectId) => {
+    const canvasObjects = storage.get("canvasObjects");
+    canvasObjects.delete(objectId);
+  }, []);
 
   useEffect(() => {
     const canvas = initializeFabric({ canvasRef, fabricRef });
@@ -78,7 +110,22 @@ export default function Page() {
     window.addEventListener("resize", () => {
       handleResize({ fabricRef });
     });
+
+    canvas.on("object:modified", (options) => {
+      handleCanvasObjectModified({
+        options,
+        syncShapeInStorage,
+      });
+    });
   }, []);
+
+  useEffect(() => {
+    renderCanvas({
+      fabricRef,
+      canvasObjects,
+      activeObjectRef,
+    });
+  }, [canvasObjects]);
   return (
     <main className="h-screen overflow-hidden">
       <Navbar
