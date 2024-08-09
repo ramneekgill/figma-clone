@@ -117,6 +117,9 @@ export default function Page() {
         syncShapeInStorage,
       });
     });
+    return () => {
+      canvas.dispose();
+    };
   }, []);
 
   useEffect(() => {
